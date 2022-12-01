@@ -21,7 +21,7 @@ contract GMXVAULTest is Test {
     function setUp() public {
         vm.selectFork(fork);
 
-        vault = new GMXVault(ERC20(GMX), "GMX", "GMX");
+        vault = new GMXVault(ERC20(GMX), "GMX", "GMX", 0);
     }
 
     function testDeposit(uint64 amt) public {

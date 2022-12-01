@@ -16,6 +16,9 @@ contract GMXVault is ERC4626 {
     /*                               STATE VARIABLES                              */
     /* -------------------------------------------------------------------------- */
 
+    /// @notice harvest fee
+    uint public immutable harvestFee;
+
     /// @notice Uniswap router
     ISwapRouter public constant uniswapRouter = ISwapRouter(0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45);
 
@@ -44,7 +47,8 @@ contract GMXVault is ERC4626 {
     constructor(
         ERC20 _asset,
         string memory _name,
-        string memory _symbol
+        string memory _symbol,
+        uint _harvestFee
     ) ERC4626(
         _asset,
         _name,
@@ -52,6 +56,7 @@ contract GMXVault is ERC4626 {
     ) {
         WETH.approve(address(uniswapRouter), type(uint).max);
         _asset.approve(address(SGMX), type(uint).max);
+        harvestFee = _harvestFee;
     }
 
     /* -------------------------------------------------------------------------- */
@@ -60,14 +65,12 @@ contract GMXVault is ERC4626 {
 
     /// @inheritdoc ERC4626
     function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
-        harvest();
         shares = super.deposit(assets, receiver);
         rewardRouter.stakeGmx(asset.balanceOf(address(this)));
     }
 
     /// @inheritdoc ERC4626
     function mint(uint256 shares, address receiver) public override returns (uint256 assets) {
-        harvest();
         assets = super.mint(shares, receiver);
         rewardRouter.stakeGmx(asset.balanceOf(address(this)));
     }
@@ -80,16 +83,22 @@ contract GMXVault is ERC4626 {
 
     /// @notice Harvest rewards
     function harvest() public {
-        rewardRouter.compound();
-        SBFGMX.claim(address(this));
-        if (WETH.balanceOf(address(this)) > 0) convertRewards();
-        if (asset.balanceOf(address(this)) > 0)
-            rewardRouter.stakeGmx(asset.balanceOf(address(this)));
+        _harvest(true);
     }
 
     /* -------------------------------------------------------------------------- */
     /*                             INTERNAL FUNCTIONS                             */
     /* -------------------------------------------------------------------------- */
+
+    function _harvest(bool collectFees) internal {
+        rewardRouter.compound();
+        SBFGMX.claim(address(this));
+        if (collectFees)
+            WETH.transfer(msg.sender, WETH.balanceOf(address(this)).mulWadDown(harvestFee));
+        if (WETH.balanceOf(address(this)) > 0) convertRewards();
+        if (asset.balanceOf(address(this)) > 0)
+            rewardRouter.stakeGmx(asset.balanceOf(address(this)));
+    }
 
     function convertRewards() internal {
         ISwapRouter.ExactInputSingleParams memory params =
@@ -108,5 +117,9 @@ contract GMXVault is ERC4626 {
 
     function beforeWithdraw(uint256 assets, uint256) internal override {
         rewardRouter.unstakeGmx(assets);
+    }
+
+    function beforeDeposit(uint256, uint256) internal override {
+        _harvest(false);
     }
 }
