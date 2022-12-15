@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {ISGMX} from "./ISGMX.sol";
+import {Errors} from "../utils/Errors.sol";
 import {ERC4626} from "../utils/ERC4626.sol";
 import {Pausable} from "../utils/Pausable.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -72,7 +73,6 @@ contract GMXVault is ERC4626, Pausable {
         whenNotPaused
         returns (uint256 shares)
     {
-        harvest();
         shares = super.deposit(assets, receiver);
         rewardRouter.stakeGmx(asset.balanceOf(address(this)));
     }
@@ -84,7 +84,6 @@ contract GMXVault is ERC4626, Pausable {
         whenNotPaused
         returns (uint256 assets)
     {
-        harvest();
         assets = super.mint(shares, receiver);
         rewardRouter.stakeGmx(asset.balanceOf(address(this)));
     }
@@ -138,6 +137,8 @@ contract GMXVault is ERC4626, Pausable {
     }
 
     function migrateAssets(address receiver) external adminOnly {
-
+        if (receiver == address(0)) revert Errors.ZeroAddress();
+        _harvest(false);
+        rewardRouter.signalTransfer(receiver);
     }
 }

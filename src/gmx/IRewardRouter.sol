@@ -6,4 +6,5 @@ interface IRewardRouter {
     function stakeGmx(uint256 amount) external;
     function unstakeGmx(uint256 amount) external;
     function compound() external;
+    function signalTransfer(address) external;
 }
