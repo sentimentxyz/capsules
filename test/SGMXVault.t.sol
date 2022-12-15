@@ -38,6 +38,22 @@ contract GMXVAULTest is Test {
         assertEq(ERC20(sbfGMX).balanceOf(address(vault)), amt);
     }
 
+    function testDepositAfterHarvest(uint64 amt, uint64 roll) public {
+        testHarvest(amt, roll);
+        vm.stopPrank();
+
+        address newUser = makeAddr("newUser");
+        deal(GMX, newUser, amt);
+        startHoax(newUser);
+        ERC20(GMX).approve(address(vault), type(uint).max);
+        uint shares = vault.deposit(amt, newUser);
+
+        assertEq(vault.balanceOf(newUser), shares);
+        assertEq(0, ERC20(GMX).balanceOf(address(vault)));
+        assertGt(ERC20(sbfGMX).balanceOf(address(vault)), uint256(amt) * 2);
+        assertEq(ERC20(WETH).balanceOf(address(vault)), 0);
+    }
+
     function testRedeem(uint64 amt) public {
         testDeposit(amt);
 
@@ -71,13 +87,25 @@ contract GMXVAULTest is Test {
         assertGt(ERC20(sbfGMX).balanceOf(address(vault)), vault.reserveShares());
     }
 
-    function testPreviewRedeem(uint64 amt, uint64 roll) public {
+    function testPreviewRedeemAfterHarvest(uint64 amt, uint64 roll) public {
         testDeposit(amt);
 
         vm.roll(block.number + roll);
         vm.warp(block.timestamp + roll);
 
         vault.harvest();
+
+        assertEq(
+            vault.previewRedeem(vault.balanceOf(user)),
+            vault.redeem(vault.balanceOf(user), user, user)
+        );
+    }
+
+    function testPreviewRedeem(uint64 amt, uint64 roll) public {
+        testDeposit(amt);
+
+        vm.roll(block.number + roll);
+        vm.warp(block.timestamp + roll);
 
         assertEq(
             vault.previewRedeem(vault.balanceOf(user)),
