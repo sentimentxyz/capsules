@@ -10,4 +10,6 @@ library Errors {
     error MinimumShares();
     error TokenNotContract();
     error AddressNotContract();
+    error ContractNotPaused();
+    error ContractPaused();
 }

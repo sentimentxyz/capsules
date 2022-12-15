@@ -3,13 +3,15 @@ pragma solidity ^0.8.17;
 
 import {ISGMX} from "./ISGMX.sol";
 import {ERC4626} from "../utils/ERC4626.sol";
+import {Pausable} from "../utils/Pausable.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IRewardRouter} from "./IRewardRouter.sol";
 import {ISwapRouter} from "../utils/ISwapRouter.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-contract GMXVault is ERC4626 {
+
+contract GMXVault is ERC4626, Pausable {
     using FixedPointMathLib for uint256;
 
     /* -------------------------------------------------------------------------- */
@@ -53,7 +55,7 @@ contract GMXVault is ERC4626 {
         _asset,
         _name,
         _symbol
-    ) {
+    ) Pausable(msg.sender) {
         WETH.approve(address(uniswapRouter), type(uint).max);
         _asset.approve(address(SGMX), type(uint).max);
         harvestFee = _harvestFee;
@@ -64,13 +66,25 @@ contract GMXVault is ERC4626 {
     /* -------------------------------------------------------------------------- */
 
     /// @inheritdoc ERC4626
-    function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
+    function deposit(uint256 assets, address receiver)
+        public
+        override
+        whenNotPaused
+        returns (uint256 shares)
+    {
+        harvest();
         shares = super.deposit(assets, receiver);
         rewardRouter.stakeGmx(asset.balanceOf(address(this)));
     }
 
     /// @inheritdoc ERC4626
-    function mint(uint256 shares, address receiver) public override returns (uint256 assets) {
+    function mint(uint256 shares, address receiver)
+        public
+        override
+        whenNotPaused
+        returns (uint256 assets)
+    {
+        harvest();
         assets = super.mint(shares, receiver);
         rewardRouter.stakeGmx(asset.balanceOf(address(this)));
     }
@@ -121,5 +135,9 @@ contract GMXVault is ERC4626 {
 
     function beforeDeposit(uint256, uint256) internal override {
         _harvest(false);
+    }
+
+    function migrateAssets(address receiver) external adminOnly {
+
     }
 }
