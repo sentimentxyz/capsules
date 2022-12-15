@@ -35,7 +35,7 @@ contract GMXVault is ERC4626, Pausable {
     ISGMX public constant SGMX = ISGMX(0x908C4D94D34924765f1eDc22A1DD098397c59dD4);
 
     /// @notice gmx reward router
-    IRewardRouter public constant rewardRouter = IRewardRouter(0xA906F338CB21815cBc4Bc87ace9e68c87eF8d8F1);
+    IRewardRouter public constant rewardRouter = IRewardRouter(0xB95DB5B167D75e6d04227CfFFA61069348d271F5);
 
     /* -------------------------------------------------------------------------- */
     /*                                 CONSTRUCTOR                                */
